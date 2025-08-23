@@ -29,7 +29,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Header />
-        <main className="container mx-auto py-6">
+        <main className="container px-8 lg:px-0 mx-auto py-6">
           {children}
         </main>
       </body>
