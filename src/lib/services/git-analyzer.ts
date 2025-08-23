@@ -1,4 +1,4 @@
-import simpleGit, { SimpleGit, LogResult, DiffResult } from "simple-git";
+import simpleGit, { SimpleGit, LogResult } from "simple-git";
 import { Commit, FileChange, GitOptions } from "@/types/git";
 import {
   AnalysisResult,
@@ -7,7 +7,6 @@ import {
   TeamInsights,
 } from "@/types/analysis";
 import { existsSync, statSync } from "fs";
-import { join } from "path";
 
 export class GitAnalyzer {
   private git: SimpleGit;

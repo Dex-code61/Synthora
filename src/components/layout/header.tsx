@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export function Header() {
   return (
-    <header className="border-b bg-background/95 backdrop-blur px-8 lg:px-0 supports-[backdrop-filter]:bg-background/60">
+    <header className="border-b px-8 lg:px-0 supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-14 items-center justify-between">
         <div className="flex items-center">
           <GitBranch className="mr-2 h-6 w-6" />
