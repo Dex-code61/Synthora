@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { auth } from "@/lib/auth"
 
 // Define protected routes that require authentication
 const PROTECTED_ROUTES = [
@@ -31,7 +30,7 @@ export async function middleware(request: NextRequest) {
   
   // Skip middleware for static files and API routes (except protected ones)
   if (
-    pathname.startsWith("/_next") ||
+    pathname.startsWith("/_ next") ||
     pathname.startsWith("/favicon") ||
     pathname.includes(".") ||
     (pathname.startsWith("/api") && !pathname.startsWith("/api/protected"))
@@ -53,26 +52,20 @@ export async function middleware(request: NextRequest) {
       pathname === route || pathname.startsWith(route)
     )
 
+    // Allow access to public routes without authentication
+    if (isPublicRoute) {
+      return NextResponse.next()
+    }
+
     // Handle protected routes
     if (isProtectedRoute && !isAuthenticated) {
       const signInUrl = new URL("/auth/signin", request.url)
-      signInUrl.searchParams.set("redirectTo", pathname)
       return NextResponse.redirect(signInUrl)
     }
 
     // Handle auth routes - redirect authenticated users to dashboard
     if (isAuthRoute && isAuthenticated) {
-      const redirectTo = request.nextUrl.searchParams.get("redirectTo") || "/dashboard"
-      return NextResponse.redirect(new URL(redirectTo, request.url))
-    }
-
-    // Handle root redirect
-    if (pathname === "/") {
-      if (isAuthenticated) {
-        return NextResponse.redirect(new URL("/dashboard", request.url))
-      }
-      // For unauthenticated users, let them see the home page or redirect to sign-in
-      return NextResponse.redirect(new URL("/auth/signin", request.url))
+      return NextResponse.redirect(new URL("/dashboard", request.url))
     }
 
     return NextResponse.next()

@@ -5,6 +5,7 @@ import {
   FileMetrics,
   Pattern,
   TeamInsights,
+  RiskScore,
 } from "@/types/analysis";
 import { existsSync, statSync } from "fs";
 
@@ -380,7 +381,7 @@ export class GitAnalyzer {
   }
 
   /**
-   * Calculates a basic risk score for a file
+   * Calculates a comprehensive risk score for a file
    */
   private calculateBasicRiskScore(
     commitCount: number,
@@ -402,6 +403,69 @@ export class GitAnalyzer {
       bugRatio * 0.2;
 
     return Math.round(riskScore * 100) / 100; // Round to 2 decimal places
+  }
+
+  /**
+   * Calculates detailed risk score with factors breakdown
+   */
+  calculateDetailedRiskScore(
+    commitCount: number,
+    authorCount: number,
+    totalChanges: number,
+    bugCommits: number,
+    daysSinceLastChange: number = 0
+  ): RiskScore {
+    // Normalize factors (0-1 scale)
+    const changeFrequency = Math.min(commitCount / 50, 1);
+    const authorDiversity = Math.min(authorCount / 10, 1);
+    const changeVolume = Math.min(totalChanges / 1000, 1);
+    const bugRatio = commitCount > 0 ? bugCommits / commitCount : 0;
+
+    // Additional factor: recency (files changed recently might be more volatile)
+    const recencyFactor = daysSinceLastChange > 0 ? Math.min(1 / (daysSinceLastChange / 30), 1) : 0;
+
+    const factors = {
+      changeFrequency,
+      authorDiversity,
+      changeVolume,
+      bugRatio,
+    };
+
+    // Weighted risk score with recency consideration
+    const score = Math.min(
+      changeFrequency * 0.25 +
+      authorDiversity * 0.15 +
+      changeVolume * 0.25 +
+      bugRatio * 0.25 +
+      recencyFactor * 0.1,
+      1.0
+    );
+
+    // Generate recommendations based on risk factors
+    const recommendations: string[] = [];
+    
+    if (changeFrequency > 0.7) {
+      recommendations.push("Consider refactoring this frequently changed file");
+    }
+    if (authorDiversity > 0.8) {
+      recommendations.push("High author diversity - ensure consistent coding standards");
+    }
+    if (changeVolume > 0.8) {
+      recommendations.push("Large change volume - consider breaking into smaller modules");
+    }
+    if (bugRatio > 0.3) {
+      recommendations.push("High bug ratio - prioritize for code review and testing");
+    }
+    if (score > 0.8) {
+      recommendations.push("Critical risk file - immediate attention recommended");
+    }
+
+    return {
+      filePath: "", // Will be set by caller
+      score: Math.round(score * 100) / 100,
+      factors,
+      recommendations,
+    };
   }
 
   /**

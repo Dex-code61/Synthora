@@ -1,10 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { AuthLayout } from "@/components/auth/auth-layout"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { AlertCircle, RefreshCw, Home, LogIn } from "lucide-react"
 
 interface AuthError {
@@ -82,15 +80,12 @@ const AUTH_ERRORS: Record<string, AuthError> = {
 }
 
 export default function AuthErrorPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [error, setError] = useState<AuthError>(AUTH_ERRORS.unknown)
-  const [isRetrying, setIsRetrying] = useState(false)
 
   // Get error details from URL parameters
   const errorCode = searchParams.get("error") || "unknown"
   const errorMessage = searchParams.get("message")
-  const redirectTo = searchParams.get("redirectTo") || "/dashboard"
 
   useEffect(() => {
     const authError = AUTH_ERRORS[errorCode] || AUTH_ERRORS.unknown
@@ -103,52 +98,30 @@ export default function AuthErrorPage() {
     setError(authError)
   }, [errorCode, errorMessage])
 
-  const handleRetry = async () => {
-    setIsRetrying(true)
-    
-    // Add a small delay to show loading state
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Redirect to sign-in page with the original redirect URL
-    const signInUrl = new URL("/auth/signin", window.location.origin)
-    if (redirectTo !== "/dashboard") {
-      signInUrl.searchParams.set("redirectTo", redirectTo)
-    }
-    
-    router.push(signInUrl.toString())
-  }
-
-  const handleGoHome = () => {
-    router.push("/")
-  }
-
-  const handleGoToDashboard = () => {
-    router.push("/dashboard")
-  }
-
-  const handleContactSupport = () => {
-    // In a real app, this might open a support chat or email
-    window.open("mailto:support@synthora.com?subject=Authentication Error&body=" + 
-      encodeURIComponent(`Error Code: ${error.code}\nDescription: ${error.description}`))
-  }
-
   return (
-    <AuthLayout 
-      title={error.title}
-      description="We encountered an issue with authentication"
-    >
-      <div className="space-y-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-sm leading-relaxed">
-            {error.description}
-          </AlertDescription>
-        </Alert>
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center p-4">
+      <div className="max-w-2xl mx-auto text-center space-y-8">
+        {/* Icon */}
+        <div className="flex items-center justify-center">
+          <div className="bg-red-100 dark:bg-red-900/20 p-6 rounded-full">
+            <AlertCircle className="h-20 w-20 text-red-600 dark:text-red-400" />
+          </div>
+        </div>
 
-        {/* Error details for debugging */}
+        {/* Content */}
+        <div className="space-y-4">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+            {error.title}
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-lg mx-auto">
+            {error.description}
+          </p>
+        </div>
+
+        {/* Debug Info for Development */}
         {process.env.NODE_ENV === "development" && (
-          <Alert>
-            <AlertDescription className="text-xs font-mono">
+          <div className="bg-muted/50 p-4 rounded-lg text-left max-w-md mx-auto">
+            <p className="text-xs font-mono text-muted-foreground">
               <strong>Debug Info:</strong><br />
               Error Code: {errorCode}<br />
               {errorMessage && (
@@ -156,79 +129,55 @@ export default function AuthErrorPage() {
                   Message: {errorMessage}<br />
                 </>
               )}
-              Redirect To: {redirectTo}
-            </AlertDescription>
-          </Alert>
+            </p>
+          </div>
         )}
 
-        <div className="space-y-3">
-          {error.canRetry && error.showSignIn && (
-            <Button 
-              onClick={handleRetry} 
-              disabled={isRetrying}
-              className="w-full"
+        {/* Actions */}
+        <div className="space-y-6 pt-8">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+            {error.canRetry && error.showSignIn && (
+              <Link 
+                href="/auth/signin" 
+                className="text-lg font-semibold text-primary hover:text-primary/80 transition-colors underline underline-offset-4 flex items-center gap-2"
+              >
+                <LogIn className="h-5 w-5" />
+                Try Signing In Again
+              </Link>
+            )}
+            
+            {error.canRetry && !error.showSignIn && (
+              <Link 
+                href="/auth/signin" 
+                className="text-lg font-semibold text-primary hover:text-primary/80 transition-colors underline underline-offset-4 flex items-center gap-2"
+              >
+                <RefreshCw className="h-5 w-5" />
+                Try Again
+              </Link>
+            )}
+            
+            <span className="text-muted-foreground">or</span>
+            
+            <Link 
+              href="/" 
+              className="text-lg text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 flex items-center gap-2"
             >
-              {isRetrying ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Retrying...
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Try Signing In Again
-                </>
-              )}
-            </Button>
-          )}
-
-          {error.canRetry && !error.showSignIn && (
-            <Button 
-              onClick={handleRetry} 
-              disabled={isRetrying}
-              className="w-full"
-            >
-              {isRetrying ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Retrying...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Try Again
-                </>
-              )}
-            </Button>
-          )}
-
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={handleGoHome} variant="outline">
-              <Home className="mr-2 h-4 w-4" />
+              <Home className="h-5 w-5" />
               Go Home
-            </Button>
-            <Button onClick={handleGoToDashboard} variant="outline">
-              Dashboard
-            </Button>
+            </Link>
           </div>
-
-          {!error.canRetry && (
-            <Button 
-              onClick={handleContactSupport} 
-              variant="secondary"
-              className="w-full"
+          
+          <p className="text-sm text-muted-foreground">
+            If this problem persists, please{" "}
+            <Link 
+              href="mailto:support@synthora.com" 
+              className="text-primary hover:text-primary/80 underline underline-offset-4"
             >
-              Contact Support
-            </Button>
-          )}
-        </div>
-
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">
-            If this problem persists, please contact our support team.
+              contact support
+            </Link>
           </p>
         </div>
       </div>
-    </AuthLayout>
+    </div>
   )
 }

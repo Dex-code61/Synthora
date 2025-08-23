@@ -118,7 +118,7 @@ export function validateAuthEnvironment(): void {
   const requiredEnvVars = [
     "GITHUB_CLIENT_ID",
     "GITHUB_CLIENT_SECRET",
-    "NEXT_PUBLIC_APP_URL",
+    // "NEXT_PUBLIC_APP_URL",
   ];
 
   const missingVars = requiredEnvVars.filter(

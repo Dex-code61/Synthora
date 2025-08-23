@@ -53,12 +53,12 @@ export async function handleProfileUpdate(formData: {
   try {
     const result = await updateUserProfileAction(formData);
     
-    if (result.success) {
+    if (result?.data?.success) {
       console.log("Profile updated successfully:", result.data);
       return { success: true, user: result.data };
     } else {
-      console.error("Profile update failed:", result.error);
-      return { success: false, error: result.error };
+      console.error("Profile update failed:", result?.data?.error);
+      return { success: false, error: result?.data?.error };
     }
   } catch (error) {
     console.error("Profile update error:", error);
@@ -73,14 +73,14 @@ export async function getCurrentUser() {
   try {
     const result = await getCurrentUserAction();
     
-    if (result.success) {
+    if (result?.data?.success) {
       return {
         success: true,
-        user: result.data?.user,
-        session: result.data?.session,
+        user: result.data?.data?.user,
+        session: result.data?.data?.session,
       };
     } else {
-      return { success: false, error: result.error };
+      return { success: false, error: result?.data?.error };
     }
   } catch (error) {
     console.error("Get current user error:", error);
@@ -95,8 +95,8 @@ export async function checkIfAuthenticated() {
   try {
     const result = await checkAuthStatusAction();
     
-    if (result.success) {
-      return result.data?.isAuthenticated || false;
+    if (result?.data?.success) {
+      return result.data?.data?.isAuthenticated || false;
     } else {
       return false;
     }
@@ -113,14 +113,14 @@ export async function refreshUserSession() {
   try {
     const result = await refreshSessionAction();
     
-    if (result.success) {
+    if (result?.data?.success) {
       return {
         success: true,
-        user: result.data?.user,
-        session: result.data?.session,
+        user: result.data?.data?.user,
+        session: result.data?.data?.session,
       };
     } else {
-      return { success: false, error: result.error };
+      return { success: false, error: result?.data?.error };
     }
   } catch (error) {
     console.error("Session refresh error:", error);

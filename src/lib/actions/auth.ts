@@ -33,12 +33,14 @@ export const signInWithGitHubAction = actionClient
       const authUrl = await auth.api.signInSocial({
         body: {
           provider: "github",
-          callbackURL: data.redirectTo || `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+          callbackURL: data.redirectTo || `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/callback`,
         },
       });
 
+      console.log("GitHub OAuth URL:", authUrl.url);
       // Redirect to GitHub OAuth
       redirect(authUrl.url || "/");
+
     } catch (error) {
       console.error("GitHub sign-in error:", error);
       

@@ -1,99 +1,82 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import {useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { AuthLayout } from "@/components/auth/auth-layout"
-import { GitHubSignInButton } from "@/components/auth/github-signin-button"
-import { ErrorMessage } from "@/components/auth/auth-messages"
-import { signInWithGitHubAction, checkAuthStatusAction } from "@/lib/actions/auth"
+import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Loader2 } from "lucide-react"
+import { FaGithub } from "react-icons/fa"
+import { authClient } from "@/lib/auth-client"
 
 export default function SignInPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
-
-  // Get redirect URL from search params
-  const redirectTo = searchParams.get("redirectTo") || "/dashboard"
+  
   const errorParam = searchParams.get("error")
 
-  // Check if user is already authenticated
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const result = await checkAuthStatusAction()
-        if (result.data?.isAuthenticated) {
-          router.replace(redirectTo)
-          return
-        }
-      } catch (error) {
-        console.error("Auth check error:", error)
-      } finally {
-        setIsCheckingAuth(false)
-      }
-    }
-
-    checkAuth()
-  }, [router, redirectTo])
-
-  // Handle error from URL params (e.g., from OAuth callback)
-  useEffect(() => {
-    if (errorParam) {
-      setError(getErrorMessage(errorParam))
-    }
-  }, [errorParam])
-
-  const handleGitHubSignIn = async () => {
+  const handleGitHubSignIn = () => {
     try {
       setIsLoading(true)
-      setError(null)
-      
-      await signInWithGitHubAction({ redirectTo })
+      authClient.signIn.social({
+        provider: "github",
+        callbackURL: "/dashboard",
+        errorCallbackURL: `http:localhost:3000/auth/error?error=something went wrong&message=authentification failed&redirectTo=/auth/signin`,
+        newUserCallbackURL: "/auth/welcome",
+      })
     } catch (error) {
-      console.error("Sign-in error:", error)
-      setError(error instanceof Error ? error.message : "An unexpected error occurred")
+      console.error("Error during GitHub sign-in:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Show loading state while checking authentication
-  if (isCheckingAuth) {
-    return (
-      <AuthLayout 
-        title="Synthora" 
-        description="Checking authentication status..."
-      >
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </AuthLayout>
-    )
-  }
+  // Afficher le loading pendant la vérification de l'auth
+  // if (isLoading) {
+  //   return (
+  //     <AuthLayout 
+  //       title="Synthora" 
+  //       description="Vérification de l'authentification..."
+  //     >
+  //       <div className="w-full flex items-center justify-center">
+  //       <Loader2 className="animate-spin" />
+  //       </div>
+  //     </AuthLayout>
+  //   )
+  // }
+
 
   return (
     <AuthLayout 
-      title="Welcome to Synthora" 
-      description="Sign in to access your Git repository analysis dashboard"
+      title="Bienvenue sur Synthora" 
+      description="Connectez-vous pour accéder à votre tableau de bord d'analyse Git"
     >
       <div className="space-y-4">
-        {error && (
+        {errorParam && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {getErrorMessage(errorParam)}
+            </AlertDescription>
           </Alert>
         )}
 
-        <GitHubSignInButton
-          onSignIn={handleGitHubSignIn}
-          isLoading={isLoading}
-        />
+        <Button
+          onClick={handleGitHubSignIn}
+          disabled={isLoading}
+          className="w-full"
+          size="lg"
+        >
+          {isLoading ? (
+            <Loader2 className="animate-spin"/>
+          ) : (
+            <FaGithub className="mr-2 h-5 w-5" />
+          )}
+          {isLoading ? "Signin..." : "Signin with GitHub"}
+        </Button>
 
         <div className="text-center text-sm text-muted-foreground">
-          By signing in, you agree to our terms of service and privacy policy.
+          En vous connectant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
         </div>
       </div>
     </AuthLayout>
@@ -103,14 +86,14 @@ export default function SignInPage() {
 function getErrorMessage(errorCode: string): string {
   switch (errorCode) {
     case "oauth_error":
-      return "There was an error with GitHub authentication. Please try again."
+      return "Une erreur s'est produite avec l'authentification GitHub. Veuillez réessayer."
     case "access_denied":
-      return "GitHub access was denied. Please try signing in again."
+      return "L'accès GitHub a été refusé. Veuillez réessayer de vous connecter."
     case "callback_error":
-      return "There was an error processing the authentication callback."
+      return "Une erreur s'est produite lors du traitement du callback d'authentification."
     case "session_error":
-      return "There was an error creating your session. Please try again."
+      return "Une erreur s'est produite lors de la création de votre session. Veuillez réessayer."
     default:
-      return "An authentication error occurred. Please try again."
+      return "Une erreur d'authentification s'est produite. Veuillez réessayer."
   }
 }
