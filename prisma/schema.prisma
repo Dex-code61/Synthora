@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Repository {
+  id            Int       @id @default(autoincrement())
+  name          String
+  path          String    @unique
+  lastAnalyzed  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  commits       Commit[]
+  fileMetrics   FileMetrics[]
+  fileStories   FileStory[]
+  embeddings    Embedding[]
+  
+  @@map("repositories")
+}
+
+model Commit {
+  id           Int       @id @default(autoincrement())
+  repositoryId Int
+  sha          String    @unique
+  authorName   String
+  authorEmail  String
+  message      String
+  timestamp    DateTime
+  filesChanged Int       @default(0)
+  insertions   Int       @default(0)
+  deletions    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  
+  repository   Repository @relation(fields: [repositoryId], references: [id])
+  fileChanges  FileChange[]
+  
+  @@map("commits")
+}
+
+model FileChange {
+  id         Int    @id @default(autoincrement())
+  commitId   Int
+  filePath   String
+  changeType String // 'added', 'modified', 'deleted'
+  insertions Int    @default(0)
+  deletions  Int    @default(0)
+  createdAt  DateTime @default(now())
+  
+  commit     Commit @relation(fields: [commitId], references: [id])
+  
+  @@map("file_changes")
+}
+
+model FileMetrics {
+  id           Int      @id @default(autoincrement())
+  repositoryId Int
+  filePath     String
+  commitCount  Int      @default(0)
+  authorCount  Int      @default(0)
+  riskScore    Float    @default(0)
+  totalChanges Int      @default(0)
+  bugCommits   Int      @default(0)
+  lastModified DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  repository   Repository @relation(fields: [repositoryId], references: [id])
+  
+  @@unique([repositoryId, filePath])
+  @@map("file_metrics")
+}
+
+model FileStory {
+  id           Int      @id @default(autoincrement())
+  repositoryId Int
+  filePath     String
+  storyContent String
+  generatedAt  DateTime @default(now())
+  
+  repository   Repository @relation(fields: [repositoryId], references: [id])
+  
+  @@unique([repositoryId, filePath])
+  @@map("file_stories")
+}
+
+model Embedding {
+  id           Int      @id @default(autoincrement())
+  repositoryId Int
+  contentType  String   // 'commit', 'comment', 'pr'
+  contentId    String
+  contentText  String
+  embedding    Float[]  // Vector embedding
+  createdAt    DateTime @default(now())
+  
+  repository   Repository @relation(fields: [repositoryId], references: [id])
+  
+  @@map("embeddings")
+}

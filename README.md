@@ -1,41 +1,154 @@
-<<<<<<< HEAD
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Synthora - Git Repository Analysis
+
+Synthora is a Kiro extension that analyzes Git repository history to reveal code evolution, technical decisions, and predict risk zones. The tool transforms Git metadata into narrative insights using AI, helping developers understand codebase evolution and team collaboration patterns.
+
+## Features
+
+- **Interactive Timeline**: Visualize commit history with interactive charts
+- **AI-Generated Stories**: Get AI-powered narratives about file evolution
+- **Risk Analysis**: Identify code hotspots and high-risk areas
+- **Team Insights**: Analyze collaboration patterns and knowledge distribution
+- **Semantic Search**: Search through commit messages and code using natural language
+- **Kiro Integration**: Seamless integration with Kiro IDE
+
+## Tech Stack
+
+- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL with Redis for caching
+- **AI**: OpenAI/Anthropic for story generation
+- **Git Analysis**: simple-git library
+- **Visualization**: Recharts
+
+## Prerequisites
+
+- Node.js 18+ and pnpm
+- Docker and Docker Compose
+- Git
+- OpenAI API key (optional, for AI features)
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone and Install Dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd synthora
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Set Up Development Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Start the database services:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+docker-compose up -d
+```
 
-## Learn More
+This will start:
+- PostgreSQL on port 5432
+- Redis on port 6379
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Configure Environment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Copy the `.env` file and update with your settings:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# The .env file is already created with default values
+# Update OPENAI_API_KEY if you want AI features
+```
 
-## Deploy on Vercel
+### 4. Set Up Database
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Generate Prisma client and run migrations:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-=======
-# Synthora
-Créer une extension Synthora qui analyse l'historique Git d'un projet pour révéler l'évolution du code, les décisions techniques, et prédire les zones à risque. L'outil transforme les métadonnées Git en insights narratifs grâce à l'IA intégrée de Kiro.
->>>>>>> 631930966c36cd4e98025bf3e6cfd66b161a97f7
+```bash
+pnpm db:generate
+pnpm db:push
+pnpm db:seed
+```
+
+### 5. Start Development Server
+
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to see the application.
+
+## Available Scripts
+
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm start` - Start production server
+- `pnpm lint` - Run ESLint
+- `pnpm db:generate` - Generate Prisma client
+- `pnpm db:push` - Push schema changes to database
+- `pnpm db:migrate` - Run database migrations
+- `pnpm db:studio` - Open Prisma Studio
+- `pnpm db:seed` - Seed database with sample data
+
+## Project Structure
+
+```
+synthora/
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes
+│   ├── dashboard/         # Dashboard pages
+│   └── layout.tsx         # Root layout
+├── src/
+│   ├── components/        # React components
+│   ├── lib/              # Utility libraries
+│   └── types/            # TypeScript type definitions
+├── prisma/               # Database schema and migrations
+├── docker-compose.yml    # Development services
+└── .env                  # Environment variables
+```
+
+## API Endpoints
+
+- `GET /api/health` - Health check
+- `GET /api/repositories` - List repositories
+- `POST /api/repositories` - Create repository
+- `POST /api/repositories/[id]/analyze` - Start analysis
+- `GET /api/repositories/[id]/timeline` - Get timeline data
+- `GET /api/repositories/[id]/hotspots` - Get risk analysis
+
+## Development
+
+### Database Management
+
+View your data:
+```bash
+pnpm db:studio
+```
+
+Reset database:
+```bash
+pnpm db:push --force-reset
+pnpm db:seed
+```
+
+### Docker Services
+
+Stop services:
+```bash
+docker-compose down
+```
+
+View logs:
+```bash
+docker-compose logs -f
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
