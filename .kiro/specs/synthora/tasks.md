@@ -2,10 +2,6 @@
 
 - [x] 1. Set up project foundation and database schema
 
-
-
-
-
   - Initialize Next.js project with TypeScript and required dependencies
   - Configure Prisma with PostgreSQL database schema for repositories, commits, and file metrics
   - Set up development environment with Docker for PostgreSQL and Redis
@@ -14,21 +10,15 @@
 
 - [x] 2. Implement core Git analysis service
 
-
-
-
-
-
-
-
-
   - Create GitAnalyzer service class with simple-git integration
   - Implement repository detection and basic commit history parsing
   - Write functions to extract file changes and calculate basic metrics
+
   - Add unit tests for Git operations with mock repositories
   - _Requirements: 1.1, 3.1, 5.2_
 
 - [ ] 3. Create database models and API foundation
+
   - Implement Prisma models for Repository, Commit, FileChange, and FileMetrics
   - Create database migration scripts and seed data for testing
   - Build basic API routes for repository CRUD operations
@@ -37,6 +27,7 @@
   - _Requirements: 7.1, 7.3, 8.3_
 
 - [ ] 4. Build repository analysis and metrics calculation
+
   - Implement file metrics calculation including commit count, author count, and change volume
   - Create risk score algorithm based on change frequency, bug correlation, and author diversity
   - Add background job processing for large repository analysis
@@ -45,6 +36,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 5.5_
 
 - [ ] 5. Implement AI story generation service
+
   - Create StoryGenerator service with OpenAI/Anthropic integration
   - Design prompts for generating file evolution narratives
   - Implement story caching and retrieval system
@@ -54,6 +46,7 @@
   - _Requirements: 2.2, 2.3, 8.2_
 
 - [ ] 6. Build interactive timeline visualization
+
   - Create TimelineChart component using Recharts with commit data visualization
   - Implement timeline filtering by date range, author, and file type
   - Add interactive tooltips showing commit details on hover
@@ -63,6 +56,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
 - [ ] 7. Create file story panel and display
+
   - Build FileStoryPanel component for displaying AI-generated narratives
   - Implement loading states and progress indicators for story generation
   - Create structured story display with sections for creation, changes, and recommendations
@@ -72,6 +66,7 @@
   - _Requirements: 2.1, 2.3, 2.4, 2.5_
 
 - [ ] 8. Implement risk analysis and hotspot detection
+
   - Create RiskHeatmap component for visualizing file risk scores
   - Build MetricsTable component showing detailed file statistics
   - Implement hotspot detection algorithm identifying high-risk files
@@ -81,6 +76,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
 - [ ] 9. Build Kiro extension integration
+
   - Create basic Kiro extension with manifest and command registration
   - Implement context menu integration for "Tell me this file's story" option
   - Build webview panels for timeline, story, and hotspot displays
@@ -90,6 +86,7 @@
   - _Requirements: 2.1, 5.1, 5.2, 5.3_
 
 - [ ] 10. Implement semantic search functionality
+
   - Create embedding generation service for commit messages and code comments
   - Build semantic search API with vector similarity matching
   - Implement SemanticSearch component with natural language query interface
@@ -99,6 +96,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.5_
 
 - [ ] 11. Add team collaboration insights
+
   - Implement collaboration pattern analysis identifying developer interactions
   - Create knowledge silo detection algorithm for single-owner files
   - Build TeamInsights component displaying collaboration metrics
@@ -108,6 +106,7 @@
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
 - [ ] 12. Implement caching and performance optimization
+
   - Add Redis caching for expensive Git operations and analysis results
   - Implement incremental analysis for repositories with new commits
   - Create background job system for large repository processing
@@ -117,6 +116,7 @@
   - _Requirements: 7.2, 7.3, 5.5_
 
 - [ ] 13. Build comprehensive error handling and recovery
+
   - Implement error handling for Git operation failures with user-friendly messages
   - Add AI service error recovery with fallback functionality
   - Create database error handling with retry mechanisms and data integrity checks
@@ -126,6 +126,7 @@
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
 - [ ] 14. Create dashboard and navigation interface
+
   - Build main dashboard component with navigation to different analysis views
   - Implement repository selection and management interface
   - Create status indicators for analysis progress and system health
@@ -135,6 +136,7 @@
   - _Requirements: 5.1, 5.4, 7.2_
 
 - [ ] 15. Add data persistence and cleanup policies
+
   - Implement automatic cleanup for old analysis data and cached results
   - Create data export functionality for analysis results
   - Add repository management with deletion and archiving options
