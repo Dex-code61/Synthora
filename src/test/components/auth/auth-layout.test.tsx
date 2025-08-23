@@ -1,5 +1,9 @@
+import React from "react"
 import { render, screen } from "@testing-library/react"
 import { AuthLayout } from "@/components/auth/auth-layout"
+import { expect } from "vitest"
+import { it } from "vitest"
+import { describe } from "vitest"
 
 describe("AuthLayout", () => {
   it("renders with title and description", () => {

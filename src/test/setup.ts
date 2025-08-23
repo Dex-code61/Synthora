@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import React from "react";
+import "@testing-library/jest-dom";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({

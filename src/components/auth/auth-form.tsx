@@ -66,7 +66,7 @@ export function AuthForm<T extends z.ZodTypeAny>({
       >
         {children}
         <Button type="submit" className="w-full" disabled={isFormLoading}>
-          {isFormLoading ? (
+          {isFormLoading  ? (
             <>
               <LoadingSpinner size="sm" className="mr-2" />
               {loadingText}
