@@ -1,15 +1,16 @@
+/**
+ * @deprecated Use the new email service from src/lib/email/service.ts instead
+ * This file is kept for backward compatibility but should not be used for new code.
+ */
+
 import { resend } from "./resend";
 
-
-
 export const sendMail = async ({
-    email,
     to,
     subject,
     from,
     text
 }: {
-    email: string,
     to: string,
     subject: string,
     from?: string,
