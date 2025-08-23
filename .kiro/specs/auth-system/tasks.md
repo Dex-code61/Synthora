@@ -2,9 +2,6 @@
 
 - [x] 1. Install and configure authentication dependencies
 
-
-
-
   - Install better-auth, resend, next-safe-action, and next-zod-route packages
   - Set up environment variables for GitHub OAuth and Resend
   - _Requirements: 1.1, 2.1, 6.1_
@@ -16,7 +13,7 @@
   - Update Prisma client generation
   - _Requirements: 8.1, 8.2, 7.1_
 
-- [ ] 3. Create authentication validation schemas
+- [x] 3. Create authentication validation schemas
 
   - Implement zod schemas for user authentication and profile validation
   - Create type definitions for authentication data structures
@@ -30,11 +27,11 @@
   - Implement session management and security settings
   - _Requirements: 1.1, 1.2, 7.1, 7.2_
 
-- [ ] 5. Create authentication API routes
+- [x] 5. Create authentication server actions
 
-  - Implement better-auth API handler for Next.js
-  - Set up type-safe API routes using next-zod-route
-  - Add proper error handling and validation for API endpoints
+  - Implement better-auth server actions for Next.js
+  - Set up type-safe actions using next-safe-action
+  - Add proper error handling and validation for server actions
   - _Requirements: 6.2, 6.4, 4.3_
 
 - [ ] 6. Implement email service integration
