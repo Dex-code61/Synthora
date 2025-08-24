@@ -1,0 +1,94 @@
+{
+  "name": "synthora-kiro-extension",
+  "displayName": "Synthora - Code Archaeology",
+  "description": "AI-powered Git repository analysis and code evolution insights",
+  "version": "0.1.0",
+  "engines": {
+    "kiro": "^1.0.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:*",
+    "workspaceContains:**/.git"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "synthora.analyzeFile",
+        "title": "Tell me this file's story",
+        "category": "Synthora"
+      },
+      {
+        "command": "synthora.showTimeline",
+        "title": "Show Repository Timeline",
+        "category": "Synthora"
+      },
+      {
+        "command": "synthora.showHotspots",
+        "title": "Show Code Hotspots",
+        "category": "Synthora"
+      },
+      {
+        "command": "synthora.analyzeRepository",
+        "title": "Analyze Repository",
+        "category": "Synthora"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "synthora.analyzeFile",
+          "when": "resourceExtname && !explorerResourceIsFolder",
+          "group": "synthora"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "synthora.analyzeFile",
+          "when": "editorTextFocus",
+          "group": "synthora"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "synthora.timeline",
+          "name": "Repository Timeline",
+          "when": "synthora.hasRepository"
+        },
+        {
+          "id": "synthora.hotspots",
+          "name": "Code Hotspots",
+          "when": "synthora.hasRepository"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "synthora",
+          "title": "Synthora",
+          "icon": "$(git-commit)"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@vitest/ui": "^1.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}

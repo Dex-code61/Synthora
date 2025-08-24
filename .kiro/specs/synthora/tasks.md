@@ -81,7 +81,11 @@
   - Write tests for risk calculation accuracy and hotspot identification
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 9. Build Kiro extension integration
+- [x] 9. Build Kiro extension integration
+
+
+
+
 
   - Create basic Kiro extension with manifest and command registration
   - Implement context menu integration for "Tell me this file's story" option

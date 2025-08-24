@@ -14,7 +14,11 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "npx tsx prisma/seed.ts",
+    "extension:build": "cd extension && npm run build",
+    "extension:dev": "cd extension && npm run dev",
+    "extension:test": "cd extension && npm run test",
+    "extension:install": "cd extension && npm install"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
