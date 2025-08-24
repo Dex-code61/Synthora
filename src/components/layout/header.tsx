@@ -23,7 +23,7 @@ export function Header() {
           <GitBranch className="mr-2 h-6 w-6" />
           <span className="font-bold">Synthora</span>
         </Link>
-        
+
         <div className="flex items-center space-x-6">
           {isAuthenticated && (
             <nav className="flex items-center space-x-6 text-sm font-medium">
@@ -57,9 +57,15 @@ export function Header() {
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Button
+                  variant="ghost"
+                  className="relative h-8 w-8 rounded-full"
+                >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.image || ""} alt={user?.name || ""} />
+                    <AvatarImage
+                      src={user?.image || ""}
+                      alt={user?.name || ""}
+                    />
                     <AvatarFallback>
                       {user?.name?.charAt(0)?.toUpperCase() || "U"}
                     </AvatarFallback>
@@ -90,12 +96,14 @@ export function Header() {
                   onSelect={(event) => {
                     event.preventDefault();
                     signOut();
-                    refetch()
+                    refetch();
                   }}
                   disabled={isSigningOut}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>{isSigningOut ? "Déconnexion..." : "Se déconnecter"}</span>
+                  <span>
+                    {isSigningOut ? "Déconnexion..." : "Se déconnecter"}
+                  </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
