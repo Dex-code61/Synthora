@@ -6,7 +6,7 @@ import { RiskAnalyzer } from "@/lib/services/risk-analyzer";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get current user session
@@ -24,7 +24,8 @@ export async function GET(
       );
     }
 
-    const repositoryId = parseInt(params.id);
+    const { id } = await params;
+    const repositoryId = parseInt(id);
     
     if (isNaN(repositoryId)) {
       return NextResponse.json(
@@ -61,7 +62,7 @@ export async function GET(
     const riskLevel = searchParams.get("riskLevel") as "low" | "medium" | "high" | "critical" | null;
 
     // Get file metrics
-    const fileMetrics = await prisma.fileMetrics.findMany({
+    const fileMetricsRaw = await prisma.fileMetrics.findMany({
       where: { 
         repositoryId,
         riskScore: { gte: threshold },
@@ -70,9 +71,37 @@ export async function GET(
       take: limit,
     });
 
+    // Get authors for each file to match FileMetrics interface
+    const fileMetricsWithAuthors = await Promise.all(
+      fileMetricsRaw.map(async (metrics) => {
+        const authors = await prisma.commit.groupBy({
+          by: ["authorName"],
+          where: {
+            repositoryId,
+            fileChanges: {
+              some: {
+                filePath: metrics.filePath,
+              },
+            },
+          },
+        });
+
+        return {
+          filePath: metrics.filePath,
+          commitCount: metrics.commitCount,
+          authorCount: metrics.authorCount,
+          riskScore: metrics.riskScore,
+          totalChanges: metrics.totalChanges,
+          bugCommits: metrics.bugCommits,
+          lastModified: metrics.lastModified,
+          authors: authors.map(a => a.authorName),
+        };
+      })
+    );
+
     // Calculate hotspots
     const riskAnalyzer = new RiskAnalyzer();
-    let hotspots = riskAnalyzer.identifyHotspots(fileMetrics, threshold);
+    let hotspots = riskAnalyzer.identifyHotspots(fileMetricsWithAuthors, threshold);
 
     // Filter by risk level if specified
     if (riskLevel) {

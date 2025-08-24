@@ -55,23 +55,36 @@ export async function GET(
       );
     }
 
-    // Get analysis results
-    const [commits, fileMetricsRaw] = await Promise.all([
-      prisma.commit.findMany({
-        where: { repositoryId },
-        include: {
-          fileChanges: true,
-        },
-        orderBy: { timestamp: "desc" },
-        take: 100, // Limit for performance
-      }),
-      prisma.fileMetrics.findMany({
-        where: { repositoryId },
-        orderBy: { riskScore: "desc" },
-      }),
-    ]);
+    // Get file metrics
+    const fileMetricsRaw = await prisma.fileMetrics.findMany({
+      where: { repositoryId },
+      orderBy: { riskScore: "desc" },
+    });
 
-    // Transform file metrics to match FileMetrics interface
+    if (fileMetricsRaw.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          repositoryId,
+          riskScores: [],
+          summary: {
+            totalFiles: 0,
+            averageRiskScore: 0,
+            highRiskFiles: 0,
+            mediumRiskFiles: 0,
+            lowRiskFiles: 0,
+            riskDistribution: {
+              critical: 0,
+              high: 0,
+              medium: 0,
+              low: 0,
+            },
+          },
+        },
+      });
+    }
+
+    // Transform data to match FileMetrics interface
     const fileMetricsWithAuthors = await Promise.all(
       fileMetricsRaw.map(async (metrics) => {
         const authors = await prisma.commit.groupBy({
@@ -99,65 +112,61 @@ export async function GET(
       })
     );
 
-    // Calculate additional insights
+    // Calculate risk scores
     const riskAnalyzer = new RiskAnalyzer();
     const riskScores = riskAnalyzer.calculateRiskScores(fileMetricsWithAuthors);
-    const hotspots = riskAnalyzer.identifyHotspots(fileMetricsWithAuthors);
 
     // Calculate summary statistics
-    const totalCommits = await prisma.commit.count({
-      where: { repositoryId },
-    });
-
-    const uniqueAuthors = await prisma.commit.groupBy({
-      by: ["authorName"],
-      where: { repositoryId },
-      _count: {
-        authorName: true,
-      },
-    });
-
-    const totalFiles = fileMetricsWithAuthors.length;
-    const highRiskFiles = fileMetricsWithAuthors.filter(f => f.riskScore > 0.7).length;
-    const averageRiskScore = fileMetricsWithAuthors.length > 0 
-      ? fileMetricsWithAuthors.reduce((sum, f) => sum + f.riskScore, 0) / fileMetricsWithAuthors.length 
-      : 0;
-
-    const summary = {
-      totalCommits,
-      totalFiles,
-      uniqueAuthors: uniqueAuthors.length,
-      highRiskFiles,
-      averageRiskScore: Math.round(averageRiskScore * 100) / 100,
-      lastAnalyzed: repository.lastAnalyzed,
+    const totalFiles = fileMetricsRaw.length;
+    const averageRiskScore = fileMetricsRaw.reduce((sum, file) => sum + file.riskScore, 0) / totalFiles;
+    
+    const riskDistribution = {
+      critical: fileMetricsRaw.filter(f => f.riskScore >= 0.8).length,
+      high: fileMetricsRaw.filter(f => f.riskScore >= 0.6 && f.riskScore < 0.8).length,
+      medium: fileMetricsRaw.filter(f => f.riskScore >= 0.4 && f.riskScore < 0.6).length,
+      low: fileMetricsRaw.filter(f => f.riskScore < 0.4).length,
     };
+
+    const highRiskFiles = riskDistribution.critical + riskDistribution.high;
+    const mediumRiskFiles = riskDistribution.medium;
+    const lowRiskFiles = riskDistribution.low;
+
+    // Get top risk factors
+    const topRiskFactors = riskScores
+      .slice(0, 10)
+      .map(score => ({
+        filePath: score.filePath,
+        riskScore: score.score,
+        topFactor: Object.entries(score.factors)
+          .sort(([,a], [,b]) => b - a)[0][0],
+        topFactorValue: Object.entries(score.factors)
+          .sort(([,a], [,b]) => b - a)[0][1],
+      }));
 
     return NextResponse.json({
       success: true,
       data: {
         repositoryId,
-        summary,
-        recentCommits: commits.map(commit => ({
-          sha: commit.sha,
-          author: commit.authorName,
-          message: commit.message,
-          timestamp: commit.timestamp,
-          filesChanged: commit.filesChanged,
-          insertions: commit.insertions,
-          deletions: commit.deletions,
-        })),
-        fileMetrics: fileMetricsWithAuthors.slice(0, 50), // Limit for performance
-        riskScores: riskScores.slice(0, 20), // Top 20 risk scores
-        hotspots: hotspots.slice(0, 10), // Top 10 hotspots
+        riskScores,
+        summary: {
+          totalFiles,
+          averageRiskScore: Math.round(averageRiskScore * 100) / 100,
+          highRiskFiles,
+          mediumRiskFiles,
+          lowRiskFiles,
+          riskDistribution,
+        },
+        topRiskFactors,
+        lastAnalyzed: repository.lastAnalyzed,
       },
     });
   } catch (error) {
-    console.error("Failed to get analysis results:", error);
+    console.error("Failed to get risk analysis:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to get analysis results",
+        error: "Failed to get risk analysis",
       },
       { status: 500 }
     );

@@ -66,7 +66,12 @@
   - Write tests for story panel rendering and user interactions
   - _Requirements: 2.1, 2.3, 2.4, 2.5_
 
-- [ ] 8. Implement risk analysis and hotspot detection
+- [x] 8. Implement risk analysis and hotspot detection
+
+
+
+
+
 
   - Create RiskHeatmap component for visualizing file risk scores
   - Build MetricsTable component showing detailed file statistics

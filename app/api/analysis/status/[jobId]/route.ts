@@ -5,7 +5,7 @@ import { AnalysisJobService } from "@/lib/services/analysis-job";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
     // Get current user session
@@ -23,7 +23,7 @@ export async function GET(
       );
     }
 
-    const { jobId } = params;
+    const { jobId } = await params;
 
     // Get job status
     const jobStatus = await AnalysisJobService.getJobStatus(jobId);
@@ -68,7 +68,7 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
     // Get current user session
@@ -86,7 +86,7 @@ export async function DELETE(
       );
     }
 
-    const { jobId } = params;
+    const { jobId } = await params;
 
     // Get job status to verify ownership
     const jobStatus = await AnalysisJobService.getJobStatus(jobId);
