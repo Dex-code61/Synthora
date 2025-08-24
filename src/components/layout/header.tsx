@@ -40,13 +40,13 @@ export function Header() {
                 Timeline
               </Link>
               <Link
-                href="/hotspots"
+                href="/dashboard/hotspots"
                 className="transition-colors hover:text-foreground/80"
               >
                 Hotspots
               </Link>
               <Link
-                href="/search"
+                href="/dashboard/search"
                 className="transition-colors hover:text-foreground/80"
               >
                 Search
@@ -93,12 +93,12 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="cursor-pointer"
-                  onSelect={(event) => {
+                  disabled={isSigningOut}
+                  onClick={(event) => {
                     event.preventDefault();
                     signOut();
                     refetch();
                   }}
-                  disabled={isSigningOut}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>

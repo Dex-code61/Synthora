@@ -57,9 +57,7 @@ export class StoryCacheService {
    * Cache a generated story
    */
   async cacheStory(
-    repositoryId: number,
-    story: FileStory
-  ): Promise<void> {
+repositoryId: number, filePath: string, story: FileStory  ): Promise<void> {
     try {
       const storyContent = JSON.stringify({
         story: story.story,

@@ -86,14 +86,14 @@ export default function TimelinePage({ params }: TimelinePageProps) {
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
         <AlertCircle className="h-12 w-12 text-destructive" />
         <div className="text-center">
-          <h3 className="text-lg font-semibold">Erreur de chargement</h3>
+          <h3 className="text-lg font-semibold">Loading error</h3>
           <p className="text-muted-foreground">
-            {error?.message || "Impossible de charger les données de la timeline"}
+            {error?.message || "Impossible to get timeline data. Repository not existe or have been moved"}
           </p>
         </div>
         <Button onClick={handleRefresh} variant="outline">
           <RefreshCw className="h-4 w-4 mr-2" />
-          Réessayer
+          Try again
         </Button>
       </div>
     );
