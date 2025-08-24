@@ -121,7 +121,7 @@ describe('StoryGenerator', () => {
       };
 
       mockCreate.mockResolvedValue(mockAIResponse);
-      mockExecuteWithRetry.mockImplementation(async (fn) => await fn());
+      mockExecuteWithRetry.mockImplementation(async (fn: () => void) => await fn());
 
       const result = await storyGenerator.generateFileStory(
         'src/components/Button.tsx',
@@ -188,7 +188,7 @@ describe('StoryGenerator', () => {
       };
 
       mockCreate.mockResolvedValue(mockAIResponse);
-      mockExecuteWithRetry.mockImplementation(async (fn) => await fn());
+      mockExecuteWithRetry.mockImplementation(async (fn: () => void) => await fn());
 
       const result = await storyGenerator.generateFileStory(
         'src/components/Button.tsx',
@@ -219,7 +219,7 @@ describe('StoryGenerator', () => {
       };
 
       mockCreate.mockResolvedValue(mockAIResponse);
-      mockExecuteWithRetry.mockImplementation(async (fn) => await fn());
+      mockExecuteWithRetry.mockImplementation(async (fn: () => void) => await fn());
 
       const pythonMetrics = { ...mockFileMetrics, filePath: 'scripts/deploy.py' };
 
@@ -253,7 +253,7 @@ describe('StoryGenerator', () => {
       };
 
       mockCreate.mockResolvedValue(mockAIResponse);
-      mockExecuteWithRetry.mockImplementation(async (fn) => await fn());
+      mockExecuteWithRetry.mockImplementation(async (fn: () => void) => await fn());
 
       const result = await storyGenerator.generateTeamInsights(
         'test-repo',

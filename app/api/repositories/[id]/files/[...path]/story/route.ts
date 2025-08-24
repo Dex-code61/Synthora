@@ -1,24 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
-import { storyGenerator } from '@/lib/services/story-generator';
-import { storyCacheService } from '@/lib/services/story-cache';
-import { GitAnalyzer } from '@/lib/services/git-analyzer';
-import { ApiResponse } from '@/types/api';
-import { FileStory } from '@/lib/services/story-generator';
-
-interface RouteParams {
-  params: Promise<{
-    id: string;
-    path: string[];
-  }>;
-}
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { StoryGenerator } from "@/lib/services/story-generator";
+import { StoryCacheService } from "@/lib/services/story-cache";
+import { StoryErrorHandler } from "@/lib/services/story-error-handler";
 
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
-): Promise<NextResponse<ApiResponse<FileStory>>> {
+  { params }: { params: Promise<{ id: string; path: string[] }> }
+) {
   try {
     // Get current user session
     const session = await auth.api.getSession({
@@ -26,93 +17,246 @@ export async function GET(
     });
 
     if (!session?.user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Unauthorized'
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+        },
+        { status: 401 }
+      );
     }
 
     const { id, path } = await params;
     const repositoryId = parseInt(id);
-    const filePath = path.join('/');
-    
+    const filePath = path.join("/");
+
     if (isNaN(repositoryId)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid repository ID'
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid repository ID",
+        },
+        { status: 400 }
+      );
     }
 
     if (!filePath) {
-      return NextResponse.json({
-        success: false,
-        error: 'File path is required'
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "File path is required",
+        },
+        { status: 400 }
+      );
     }
 
-    // Get query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const forceRefresh = searchParams.get('refresh') === 'true';
-    const maxAge = searchParams.get('maxAge') ? parseInt(searchParams.get('maxAge')!) : undefined;
-
-    // Check if repository exists and user has access
+    // Verify repository ownership
     const repository = await prisma.repository.findFirst({
-      where: { 
+      where: {
         id: repositoryId,
-        userId: session.user.id
-      }
+        userId: session.user.id,
+      },
     });
 
     if (!repository) {
-      return NextResponse.json({
-        success: false,
-        error: 'Repository not found or access denied'
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Repository not found",
+        },
+        { status: 404 }
+      );
     }
 
-    // Try to get cached story first
-    if (!forceRefresh) {
-      const cachedStory = await storyCacheService.getCachedStory(
-        repositoryId,
-        filePath,
-        { forceRefresh: false, maxAge }
-      );
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const forceRegenerate = searchParams.get("regenerate") === "true";
+    const includeMetrics = searchParams.get("includeMetrics") !== "false";
+    const includeHistory = searchParams.get("includeHistory") !== "false";
 
-      if (cachedStory) {
-        return NextResponse.json({
-          success: true,
-          data: cachedStory,
-          message: 'Story retrieved from cache'
+    try {
+      // Check cache first (unless force regenerate is requested)
+      const storyCache = new StoryCacheService();
+      let cachedStory = null;
+
+      if (!forceRegenerate) {
+        cachedStory = await storyCache.getCachedStory(repositoryId, filePath);
+        if (cachedStory) {
+          return NextResponse.json({
+            success: true,
+            data: {
+              repositoryId,
+              filePath,
+              story: cachedStory,
+              cached: true,
+              generatedAt: cachedStory.generatedAt,
+            },
+          });
+        }
+      }
+
+      // Check if file exists in the repository
+      const fileMetrics = await prisma.fileMetrics.findFirst({
+        where: {
+          repositoryId,
+          filePath,
+        },
+      });
+
+      if (!fileMetrics) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "File not found in repository analysis",
+          },
+          { status: 404 }
+        );
+      }
+
+      // Get file history if requested
+      let fileHistory = null;
+      if (includeHistory) {
+        fileHistory = await prisma.commit.findMany({
+          where: {
+            repositoryId,
+            fileChanges: {
+              some: {
+                filePath,
+              },
+            },
+          },
+          orderBy: { timestamp: "desc" },
+          take: 20, // Limit to last 20 commits
+          select: {
+            sha: true,
+            authorName: true,
+            authorEmail: true,
+            message: true,
+            timestamp: true,
+            fileChanges: {
+              where: {
+                filePath,
+              },
+              select: {
+                changeType: true,
+                insertions: true,
+                deletions: true,
+              },
+            },
+          },
         });
       }
+
+      // Get related files (files that were often changed together)
+      const relatedFiles = await prisma.commit.findMany({
+        where: {
+          repositoryId,
+          fileChanges: {
+            some: {
+              filePath,
+            },
+          },
+        },
+        select: {
+          fileChanges: {
+            where: {
+              filePath: {
+                not: filePath,
+              },
+            },
+            select: {
+              filePath: true,
+            },
+          },
+        },
+        take: 50,
+      });
+
+      // Count related file frequencies
+      const relatedFileFreq: Record<string, number> = {};
+      relatedFiles.forEach((commit) => {
+        commit.fileChanges.forEach((change) => {
+          relatedFileFreq[change.filePath] =
+            (relatedFileFreq[change.filePath] || 0) + 1;
+        });
+      });
+
+      const topRelatedFiles = Object.entries(relatedFileFreq)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([path, frequency]) => ({ filePath: path, frequency }));
+
+      // Generate story
+      const storyGenerator = new StoryGenerator();
+      const story = await storyGenerator.generateDetailedFileStory({
+        repositoryId,
+        filePath,
+        fileMetrics,
+        fileHistory: fileHistory || [],
+        relatedFiles: topRelatedFiles,
+        includeMetrics,
+      });
+
+      // Cache the generated story
+      await storyCache.cacheStory(repositoryId, filePath, story);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          repositoryId,
+          filePath,
+          story,
+          cached: false,
+          generatedAt: new Date().toISOString(),
+          metadata: {
+            fileMetrics: includeMetrics
+              ? {
+                  commitCount: fileMetrics.commitCount,
+                  authorCount: fileMetrics.authorCount,
+                  riskScore: fileMetrics.riskScore,
+                  totalChanges: fileMetrics.totalChanges,
+                  bugCommits: fileMetrics.bugCommits,
+                  lastModified: fileMetrics.lastModified,
+                }
+              : undefined,
+            relatedFiles: topRelatedFiles,
+            historyCount: fileHistory?.length || 0,
+          },
+        },
+      });
+    } catch (storyError) {
+      // Handle story generation errors
+      const errorHandler = new StoryErrorHandler();
+      const classifiedError = errorHandler.classifyError(storyError as Error);
+      const userMessage = errorHandler.getUserFriendlyMessage(classifiedError);
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to generate file story",
+          details: userMessage,
+          errorType: classifiedError.type,
+        },
+        { status: 500 }
+      );
     }
-
-    // Generate new story
-    const story = await generateFileStory(repository, filePath);
-    
-    // Cache the generated story
-    await storyCacheService.cacheStory(repositoryId, story);
-
-    return NextResponse.json({
-      success: true,
-      data: story,
-      message: 'Story generated successfully'
-    });
-
   } catch (error) {
-    console.error('Error in file story API:', error);
-    
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to generate file story'
-    }, { status: 500 });
+    console.error("Failed to get file story:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to get file story",
+      },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams
-): Promise<NextResponse<ApiResponse<FileStory>>> {
+  { params }: { params: Promise<{ id: string; path: string[] }> }
+) {
   try {
     // Get current user session
     const session = await auth.api.getSession({
@@ -120,71 +264,172 @@ export async function POST(
     });
 
     if (!session?.user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Unauthorized'
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+        },
+        { status: 401 }
+      );
     }
 
     const { id, path } = await params;
     const repositoryId = parseInt(id);
-    const filePath = path.join('/');
-    
+    const filePath = path.join("/");
+
     if (isNaN(repositoryId)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid repository ID'
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid repository ID",
+        },
+        { status: 400 }
+      );
     }
 
-    if (!filePath) {
-      return NextResponse.json({
-        success: false,
-        error: 'File path is required'
-      }, { status: 400 });
-    }
-
-    // Check if repository exists and user has access
+    // Verify repository ownership
     const repository = await prisma.repository.findFirst({
-      where: { 
+      where: {
         id: repositoryId,
-        userId: session.user.id
-      }
+        userId: session.user.id,
+      },
     });
 
     if (!repository) {
-      return NextResponse.json({
-        success: false,
-        error: 'Repository not found or access denied'
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Repository not found",
+        },
+        { status: 404 }
+      );
     }
 
-    // Force generate new story (ignore cache)
-    const story = await generateFileStory(repository, filePath);
-    
-    // Cache the generated story
-    await storyCacheService.cacheStory(repositoryId, story);
+    // Parse request body for custom story generation options
+    const body = await request.json();
+    const {
+      customPrompt,
+      focusAreas = [],
+      includeMetrics = true,
+      includeHistory = true,
+      maxHistoryItems = 20,
+    } = body;
 
-    return NextResponse.json({
-      success: true,
-      data: story,
-      message: 'Story generated and cached successfully'
-    });
+    try {
+      // Get file metrics
+      const fileMetrics = await prisma.fileMetrics.findFirst({
+        where: {
+          repositoryId,
+          filePath,
+        },
+      });
 
+      if (!fileMetrics) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "File not found in repository analysis",
+          },
+          { status: 404 }
+        );
+      }
+
+      // Get file history
+      let fileHistory = null;
+      if (includeHistory) {
+        fileHistory = await prisma.commit.findMany({
+          where: {
+            repositoryId,
+            fileChanges: {
+              some: {
+                filePath,
+              },
+            },
+          },
+          orderBy: { timestamp: "desc" },
+          take: maxHistoryItems,
+          select: {
+            sha: true,
+            authorName: true,
+            authorEmail: true,
+            message: true,
+            timestamp: true,
+            fileChanges: {
+              where: {
+                filePath,
+              },
+              select: {
+                changeType: true,
+                insertions: true,
+                deletions: true,
+              },
+            },
+          },
+        });
+      }
+
+      // Generate custom story
+      const storyGenerator = new StoryGenerator();
+      const story = await storyGenerator.generateCustomDetailedFileStory({
+        repositoryId,
+        filePath,
+        fileMetrics,
+        fileHistory: fileHistory || [],
+        customPrompt,
+        focusAreas,
+        includeMetrics,
+      });
+
+      // Don't cache custom stories as they are personalized
+      return NextResponse.json({
+        success: true,
+        data: {
+          repositoryId,
+          filePath,
+          story,
+          custom: true,
+          generatedAt: new Date().toISOString(),
+          options: {
+            customPrompt,
+            focusAreas,
+            includeMetrics,
+            includeHistory,
+          },
+        },
+      });
+    } catch (storyError) {
+      // Handle story generation errors
+      const errorHandler = new StoryErrorHandler();
+      const classifiedError = errorHandler.classifyError(storyError as Error);
+      const userMessage = errorHandler.getUserFriendlyMessage(classifiedError);
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to generate custom file story",
+          details: userMessage,
+          errorType: classifiedError.type,
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error('Error generating file story:', error);
-    
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to generate file story'
-    }, { status: 500 });
+    console.error("Failed to generate custom file story:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to generate custom file story",
+      },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
-): Promise<NextResponse<ApiResponse<void>>> {
+  { params }: { params: Promise<{ id: string; path: string[] }> }
+) {
   try {
     // Get current user session
     const session = await auth.api.getSession({
@@ -192,135 +437,69 @@ export async function DELETE(
     });
 
     if (!session?.user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Unauthorized'
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+        },
+        { status: 401 }
+      );
     }
 
     const { id, path } = await params;
     const repositoryId = parseInt(id);
-    const filePath = path.join('/');
-    
+    const filePath = path.join("/");
+
     if (isNaN(repositoryId)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid repository ID'
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid repository ID",
+        },
+        { status: 400 }
+      );
     }
 
     // Verify repository ownership
     const repository = await prisma.repository.findFirst({
-      where: { 
+      where: {
         id: repositoryId,
-        userId: session.user.id
-      }
+        userId: session.user.id,
+      },
     });
 
     if (!repository) {
-      return NextResponse.json({
-        success: false,
-        error: 'Repository not found or access denied'
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Repository not found",
+        },
+        { status: 404 }
+      );
     }
 
-    await storyCacheService.deleteCachedStory(repositoryId, filePath);
+    // Clear cached story for this file
+    const storyCache = new StoryCacheService();
+    await storyCache.deleteCachedStory(repositoryId, filePath);
 
     return NextResponse.json({
       success: true,
-      message: 'Cached story deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Error deleting cached story:', error);
-    
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to delete cached story'
-    }, { status: 500 });
-  }
-}
-
-async function generateFileStory(
-  repository: { id: number; path: string; name: string },
-  filePath: string
-): Promise<FileStory> {
-  try {
-    // Get file history from Git
-    const gitAnalyzer = new GitAnalyzer(repository.path);
-    const fileHistory = await gitAnalyzer.getFileHistory(filePath);
-    
-    // Get commits that affected this file
-    const commits = await gitAnalyzer.getCommitHistory({
-      maxCount: 100 // Limit to recent commits for performance
-    });
-    
-    const fileCommits = commits.filter((commit: any) => 
-      commit.files.some((f: any) => f.filePath === filePath)
-    );
-
-    // Get or calculate file metrics
-    let fileMetrics = await prisma.fileMetrics.findUnique({
-      where: {
-        repositoryId_filePath: {
-          repositoryId: repository.id,
-          filePath
-        }
-      }
-    });
-
-    // If no metrics exist, calculate basic ones
-    if (!fileMetrics) {
-      const authors = [...new Set(fileCommits.map((c: any) => c.author))];
-      const totalChanges = fileCommits.reduce((sum: number, c: any) => {
-        const fileChange = c.files.find((f: any) => f.filePath === filePath);
-        return sum + (fileChange?.insertions || 0) + (fileChange?.deletions || 0);
-      }, 0);
-      
-      const bugCommits = fileCommits.filter((c: any) => 
-        /\b(fix|bug|error|issue|patch)\b/i.test(c.message)
-      ).length;
-
-      // Create basic metrics
-      fileMetrics = {
-        id: 0,
-        repositoryId: repository.id,
+      message: "File story cache cleared successfully",
+      data: {
+        repositoryId,
         filePath,
-        commitCount: fileCommits.length,
-        authorCount: authors.length,
-        riskScore: Math.min(1.0, (bugCommits / Math.max(fileCommits.length, 1)) * 2), // Simple risk calculation
-        totalChanges,
-        bugCommits,
-        lastModified: fileCommits.length > 0 ? fileCommits[0].timestamp : new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-    }
-
-    // Convert to the format expected by StoryGenerator
-    const metricsForGenerator = {
-      filePath: fileMetrics.filePath,
-      commitCount: fileMetrics.commitCount,
-      authorCount: fileMetrics.authorCount,
-      riskScore: fileMetrics.riskScore,
-      totalChanges: fileMetrics.totalChanges,
-      bugCommits: fileMetrics.bugCommits,
-      lastModified: fileMetrics.lastModified,
-      authors: [...new Set(fileCommits.map((c: any) => c.author))] as string[]
-    };
-
-    // Generate the story
-    const story = await storyGenerator.generateFileStory(
-      filePath,
-      fileHistory,
-      metricsForGenerator,
-      fileCommits
-    );
-
-    return story;
-
+        clearedAt: new Date().toISOString(),
+      },
+    });
   } catch (error) {
-    console.error('Error generating file story:', error);
-    throw new Error(`Failed to generate story for ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error("Failed to clear file story cache:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to clear file story cache",
+      },
+      { status: 500 }
+    );
   }
 }

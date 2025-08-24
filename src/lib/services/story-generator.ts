@@ -441,6 +441,326 @@ This level of activity suggests ${authors.length > 5 ? 'good team collaboration'
   setFallbackEnabled(enabled: boolean): void {
     this.fallbackEnabled = enabled;
   }
+
+  /**
+   * Generate a detailed story for a specific file (new API route method)
+   */
+  async generateDetailedFileStory(options: {
+    repositoryId: number;
+    filePath: string;
+    fileMetrics: any;
+    fileHistory: any[];
+    relatedFiles: Array<{ filePath: string; frequency: number }>;
+    includeMetrics: boolean;
+  }): Promise<any> {
+    const { repositoryId, filePath, fileMetrics, fileHistory, relatedFiles, includeMetrics } = options;
+
+    try {
+      // Build context for story generation
+      const context = {
+        file: {
+          path: filePath,
+          metrics: includeMetrics ? fileMetrics : null,
+        },
+        history: fileHistory.map(commit => ({
+          sha: commit.sha.substring(0, 8),
+          author: commit.authorName,
+          message: commit.message,
+          timestamp: commit.timestamp,
+          changes: commit.fileChanges[0] || {},
+        })),
+        relatedFiles: relatedFiles.slice(0, 3), // Top 3 related files
+        analysis: {
+          riskLevel: this.getRiskLevel(fileMetrics.riskScore),
+          changeFrequency: this.getChangeFrequency(fileMetrics.commitCount),
+          authorDiversity: this.getAuthorDiversity(fileMetrics.authorCount),
+        },
+      };
+
+      // Generate story content
+      const story = await this.generateStoryContent(context);
+
+      return {
+        id: `${repositoryId}-${filePath}-${Date.now()}`,
+        repositoryId,
+        filePath,
+        content: story,
+        summary: this.generateSummary(story),
+        insights: this.generateInsights(context),
+        recommendations: this.generateRecommendations(context),
+        generatedAt: new Date(),
+        version: "1.0",
+      };
+    } catch (error) {
+      console.error('Error generating detailed file story:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate a custom story with user-defined focus areas
+   */
+  async generateCustomDetailedFileStory(options: {
+    repositoryId: number;
+    filePath: string;
+    fileMetrics: any;
+    fileHistory: any[];
+    customPrompt?: string;
+    focusAreas: string[];
+    includeMetrics: boolean;
+    relatedFiles?: Array<{ filePath: string; frequency: number }>;
+  }): Promise<any> {
+    const { repositoryId, filePath, fileMetrics, fileHistory, customPrompt, focusAreas, includeMetrics, relatedFiles = [] } = options;
+
+    try {
+      // Build enhanced context with custom requirements
+      const context = {
+        file: {
+          path: filePath,
+          metrics: includeMetrics ? fileMetrics : null,
+        },
+        history: fileHistory.map(commit => ({
+          sha: commit.sha.substring(0, 8),
+          author: commit.authorName,
+          message: commit.message,
+          timestamp: commit.timestamp,
+          changes: commit.fileChanges[0] || {},
+        })),
+        relatedFiles: relatedFiles.slice(0, 3),
+        customPrompt,
+        focusAreas,
+        analysis: {
+          riskLevel: this.getRiskLevel(fileMetrics.riskScore),
+          changeFrequency: this.getChangeFrequency(fileMetrics.commitCount),
+          authorDiversity: this.getAuthorDiversity(fileMetrics.authorCount),
+        },
+      };
+
+      // Generate custom story content
+      const story = await this.generateCustomStoryContent(context);
+
+      return {
+        id: `${repositoryId}-${filePath}-custom-${Date.now()}`,
+        repositoryId,
+        filePath,
+        content: story,
+        summary: this.generateSummary(story),
+        insights: this.generateCustomInsights(context),
+        recommendations: this.generateCustomRecommendations(context),
+        generatedAt: new Date(),
+        version: "1.0-custom",
+        customOptions: {
+          prompt: customPrompt,
+          focusAreas,
+        },
+      };
+    } catch (error) {
+      console.error('Error generating custom detailed file story:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate story content based on context
+   */
+  private async generateStoryContent(context: any): Promise<string> {
+    const { file, history, relatedFiles, analysis } = context;
+    
+    let story = `# The Story of ${file.path}\n\n`;
+    
+    // Introduction
+    story += `This file has been an ${analysis.changeFrequency} part of the codebase, `;
+    story += `with ${analysis.authorDiversity} contributing to its evolution.\n\n`;
+    
+    // Risk assessment
+    if (file.metrics) {
+      story += `## Risk Assessment\n`;
+      story += `Current risk level: **${analysis.riskLevel}** (${(file.metrics.riskScore * 100).toFixed(1)}%)\n`;
+      story += `- Total commits: ${file.metrics.commitCount}\n`;
+      story += `- Contributors: ${file.metrics.authorCount}\n`;
+      story += `- Bug fixes: ${file.metrics.bugCommits}\n\n`;
+    }
+    
+    // Recent activity
+    if (history.length > 0) {
+      story += `## Recent Activity\n`;
+      story += `The file has seen ${history.length} recent changes:\n\n`;
+      
+      history.slice(0, 5).forEach((commit: any, index: number) => {
+        story += `${index + 1}. **${commit.sha}** by ${commit.author}\n`;
+        story += `   ${commit.message}\n`;
+        if (commit.changes.insertions || commit.changes.deletions) {
+          story += `   (+${commit.changes.insertions || 0}/-${commit.changes.deletions || 0} lines)\n`;
+        }
+        story += `\n`;
+      });
+    }
+    
+    // Related files
+    if (relatedFiles && relatedFiles.length > 0) {
+      story += `## Related Files\n`;
+      story += `This file is often changed together with:\n\n`;
+      relatedFiles.forEach((related: any, index: number) => {
+        story += `${index + 1}. ${related.filePath} (${related.frequency} times)\n`;
+      });
+      story += `\n`;
+    }
+    
+    return story;
+  }
+
+  /**
+   * Generate custom story content with user focus
+   */
+  private async generateCustomStoryContent(context: any): Promise<string> {
+    const { file, history, customPrompt, focusAreas, analysis } = context;
+    
+    let story = `# Custom Analysis: ${file.path}\n\n`;
+    
+    if (customPrompt) {
+      story += `## Custom Focus\n${customPrompt}\n\n`;
+    }
+    
+    if (focusAreas.length > 0) {
+      story += `## Focus Areas\n`;
+      focusAreas.forEach((area: string, index: number) => {
+        story += `${index + 1}. ${area}\n`;
+      });
+      story += `\n`;
+    }
+    
+    // Add standard content but filtered by focus areas
+    story += await this.generateStoryContent(context);
+    
+    return story;
+  }
+
+  /**
+   * Get risk level description
+   */
+  private getRiskLevel(riskScore: number): string {
+    if (riskScore >= 0.8) return "Critical";
+    if (riskScore >= 0.6) return "High";
+    if (riskScore >= 0.4) return "Medium";
+    return "Low";
+  }
+
+  /**
+   * Get change frequency description
+   */
+  private getChangeFrequency(commitCount: number): string {
+    if (commitCount >= 50) return "very active";
+    if (commitCount >= 20) return "active";
+    if (commitCount >= 10) return "moderately active";
+    return "stable";
+  }
+
+  /**
+   * Get author diversity description
+   */
+  private getAuthorDiversity(authorCount: number): string {
+    if (authorCount >= 10) return "many developers";
+    if (authorCount >= 5) return "several developers";
+    if (authorCount >= 2) return "multiple developers";
+    return "a single developer";
+  }
+
+  /**
+   * Generate summary from story content
+   */
+  private generateSummary(story: string): string {
+    const lines = story.split('\n').filter(line => line.trim());
+    const firstParagraph = lines.find(line => !line.startsWith('#') && line.length > 20);
+    return firstParagraph || "File story generated successfully";
+  }
+
+  /**
+   * Generate insights from context
+   */
+  private generateInsights(context: any): string[] {
+    const insights: string[] = [];
+    const { file, analysis } = context;
+    
+    if (file.metrics) {
+      if (file.metrics.riskScore > 0.7) {
+        insights.push("This file has a high risk score and may need attention");
+      }
+      
+      if (file.metrics.bugCommits > file.metrics.commitCount * 0.2) {
+        insights.push("This file has a high proportion of bug fixes");
+      }
+      
+      if (file.metrics.authorCount === 1) {
+        insights.push("This file has only one contributor, creating knowledge silos");
+      }
+    }
+    
+    return insights;
+  }
+
+  /**
+   * Generate custom insights
+   */
+  private generateCustomInsights(context: any): string[] {
+    const insights = this.generateInsights(context);
+    const { focusAreas } = context;
+    
+    // Add focus-area specific insights
+    focusAreas.forEach((area: string) => {
+      if (area.toLowerCase().includes("security")) {
+        insights.push("Security review recommended for this file");
+      }
+      if (area.toLowerCase().includes("performance")) {
+        insights.push("Performance analysis suggested for this file");
+      }
+    });
+    
+    return insights;
+  }
+
+  /**
+   * Generate recommendations
+   */
+  private generateRecommendations(context: any): string[] {
+    const recommendations: string[] = [];
+    const { file } = context;
+    
+    if (file.metrics) {
+      if (file.metrics.riskScore > 0.7) {
+        recommendations.push("Consider refactoring to reduce complexity");
+        recommendations.push("Add more comprehensive tests");
+      }
+      
+      if (file.metrics.authorCount === 1) {
+        recommendations.push("Encourage code reviews from other team members");
+        recommendations.push("Document the file's purpose and architecture");
+      }
+    }
+    
+    return recommendations;
+  }
+
+  /**
+   * Generate custom recommendations
+   */
+  private generateCustomRecommendations(context: any): string[] {
+    const recommendations = this.generateRecommendations(context);
+    const { focusAreas } = context;
+    
+    // Add focus-area specific recommendations
+    focusAreas.forEach((area: string) => {
+      if (area.toLowerCase().includes("security")) {
+        recommendations.push("Conduct security audit");
+        recommendations.push("Review for common vulnerabilities");
+      }
+      if (area.toLowerCase().includes("performance")) {
+        recommendations.push("Profile for performance bottlenecks");
+        recommendations.push("Consider optimization opportunities");
+      }
+    });
+    
+    return recommendations;
+  }
 }
 
 export const storyGenerator = new StoryGenerator();
