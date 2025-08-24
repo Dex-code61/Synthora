@@ -34,7 +34,7 @@ export function Header() {
                 Dashboard
               </Link>
               <Link
-                href="/timeline"
+                href="/dashboard/timeline"
                 className="transition-colors hover:text-foreground/80"
               >
                 Timeline
