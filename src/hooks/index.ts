@@ -11,7 +11,7 @@ export * from './use-timeline'
 
 // Hooks d'analyse
 export * from './use-analysis'
-export * from './use-hotspots'
+// export * from './use-hotspots'
 
 // Hooks de stories
 export * from './use-stories'

@@ -30,7 +30,7 @@ export async function POST(
       );
     }
 
-    const repositoryId = parseInt(params.id);
+    const repositoryId = parseInt((await params).id);
     
     if (isNaN(repositoryId)) {
       return NextResponse.json(
