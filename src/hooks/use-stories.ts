@@ -3,17 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiResponse } from '@/types/api'
 
-// Types pour les stories
-export interface FileStory {
-  filePath: string
-  story: string
-  summary: string
-  keyChanges: string[]
-  riskFactors: string[]
-  recommendations: string[]
-  lastUpdated: Date
-  confidence: number
-}
+// Import the FileStory type from the story generator service
+import { FileStory } from '@/lib/services/story-generator'
 
 export interface StoryGenerationOptions {
   includeRiskAnalysis?: boolean
