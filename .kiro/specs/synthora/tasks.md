@@ -26,8 +26,7 @@
   - Write integration tests for database operations
   - _Requirements: 7.1, 7.3, 8.3_
 
-- [x] 4. Build repository analysis and metrics calculation
-
+- [x] 4.
 
   - Implement file metrics calculation including commit count, author count, and change volume
   - Create risk score algorithm based on change frequency, bug correlation, and author diversity
@@ -36,7 +35,8 @@
   - Write tests for metrics calculation with various commit patterns
   - _Requirements: 3.1, 3.2, 3.3, 5.5_
 
-- [ ] 5. Implement AI story generation service
+- [x] 5. Implement AI story generation service
+
 
   - Create StoryGenerator service with OpenAI/Anthropic integration
   - Design prompts for generating file evolution narratives
