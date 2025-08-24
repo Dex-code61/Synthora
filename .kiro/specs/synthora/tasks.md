@@ -97,6 +97,11 @@
 
 - [ ] 10. Implement semantic search functionality
 
+
+
+
+
+
   - Create embedding generation service for commit messages and code comments
   - Build semantic search API with vector similarity matching
   - Implement SemanticSearch component with natural language query interface
